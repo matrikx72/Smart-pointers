@@ -1,5 +1,6 @@
 #include <iostream>
-#include <utility> 
+#include <utility>
+#include <cassert>
 
 template <typename T>
 class SimpleUniquePtr {
@@ -18,9 +19,7 @@ public:
 
     SimpleUniquePtr& operator=(SimpleUniquePtr&& other) noexcept {
         if (this != &other) {
-            reset();           
-            ptr_ = other.ptr_;
-            other.ptr_ = nullptr;
+            reset(other.release());
         }
         return *this;
     }
@@ -50,6 +49,10 @@ public:
         }
     }
 
+    explicit operator bool() const noexcept { 
+        return ptr_ != nullptr; 
+    }
+
     ~SimpleUniquePtr() {
         delete ptr_;
     }
@@ -72,6 +75,10 @@ int main() {
 
     Foo* raw = p.release();
     delete raw;
+
+    SimpleUniquePtr<Foo> p2(new Foo());
+    SimpleUniquePtr<Foo> p3 = std::move(p2);
+    assert(p2.get() == nullptr);
 
     return 0;
 }
