@@ -1,6 +1,7 @@
 #include <iostream>
 #include <utility>
 #include <cassert>
+#include <stdexcept>
 
 template <typename T>
 class SimpleUniquePtr {
@@ -24,18 +25,21 @@ public:
         return *this;
     }
 
-    T& operator*() const noexcept {
+    T& operator*() const {
+        if (ptr_ == nullptr) {
+            throw std::runtime_error("SimpleUniquePtr: dereferencing null pointer");
+        }
         return *ptr_;
     }
 
-    T* operator->() const noexcept {
+    T* operator->() const {
+        if (ptr_ == nullptr) {
+            throw std::runtime_error("SimpleUniquePtr: arrow operator on null pointer");
+        }
         return ptr_;
     }
 
-    T* get() const noexcept {
-        return ptr_;
-    }
-
+    T* get() const noexcept { return ptr_; }
     T* release() noexcept {
         T* tmp = ptr_;
         ptr_ = nullptr;
@@ -49,8 +53,8 @@ public:
         }
     }
 
-    explicit operator bool() const noexcept { 
-        return ptr_ != nullptr; 
+    explicit operator bool() const noexcept {
+        return ptr_ != nullptr;
     }
 
     ~SimpleUniquePtr() {
@@ -69,16 +73,31 @@ struct Foo {
 };
 
 int main() {
-    SimpleUniquePtr<Foo> p(new Foo);
-    (*p).hello();
-    p->hello();
+    try {
+        SimpleUniquePtr<Foo> p(new Foo());
+        (*p).hello();
+        p->hello();
 
-    Foo* raw = p.release();
-    delete raw;
+        SimpleUniquePtr<Foo> empty;
+        try {
+            (*empty).hello();
+        }
+        catch (const std::runtime_error& e) {
+            std::cout << "Exception caught: " << e.what() << '\n';
+        }
 
-    SimpleUniquePtr<Foo> p2(new Foo());
-    SimpleUniquePtr<Foo> p3 = std::move(p2);
-    assert(p2.get() == nullptr);
+        Foo* raw = p.release();
+        delete raw;
+
+        SimpleUniquePtr<Foo> p2(new Foo());
+        SimpleUniquePtr<Foo> p3 = std::move(p2);
+        assert(p2.get() == nullptr);
+
+        std::cout << "All tests passed!\n";
+    }
+    catch (const std::exception& e) {
+        std::cout << "Error: " << e.what() << '\n';
+    }
 
     return 0;
 }
